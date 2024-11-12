@@ -56,3 +56,4 @@ if __name__ == '__main__':
     )
     for images, labels in data_loader:
         print(images.shape)
+        print(labels)

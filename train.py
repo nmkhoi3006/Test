@@ -1,3 +1,4 @@
+
 from DataSet import MyDataSet
 from Model import CNNModel
 import torch
@@ -8,6 +9,7 @@ from sklearn.metrics import accuracy_score
 from tqdm.autonotebook import tqdm
 import numpy as np
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 def train():
     log_path = "tensorboard"
@@ -21,35 +23,39 @@ def train():
 
     dataloader_train = DataLoader(
         dataset=data_train,
-        batch_size=8,
-        num_workers=6,
+        batch_size=2,
+        num_workers=0,
         drop_last=False
     )
     dataloader_test = DataLoader(
         dataset=data_test,
-        batch_size=4,
-        num_workers=6,
+        batch_size=2,
+        num_workers=0,
         drop_last=False
     )
 
-    model = CNNModel(num_class=3)
+    model = CNNModel(num_class=3).to(device)
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.SGD(params=model.parameters(), lr=1e-2)
     num_epochs = 100
     num_iter = int(len(data_train)/32)
     for epoch in range(1, num_epochs+1):
         #TRAIN
-        progress_bar = tqdm(dataloader_train, colour="blue")
+        # progress_bar = tqdm(dataloader_train, colour="blue")
         print("TRAIN")
         model.train()
-        for iter, (img, label) in enumerate(progress_bar):
+        for iter, (img, label) in enumerate(dataloader_train):
+            img = img.to(device)
+            label = label.to(device)
+            optimizer.zero_grad()
             prediction = model(img)
             loss = criterion(prediction, label)
 
-            optimizer.zero_grad()
+            print(loss.item())
+            # optimizer.zero_grad()
             loss.backward()
             optimizer.step()
-            progress_bar.set_description(f"Epoch: {epoch}/{num_epochs} | Loss: {loss:.4f}")
+            # progress_bar.set_description(f"Epoch: {epoch}/{num_epochs} | Loss: {loss:.4f}")
 
         #VAL
         all_losses = []
@@ -59,6 +65,8 @@ def train():
         model.eval()
         with torch.inference_mode():
             for img, label in (dataloader_test):
+                img = img.to(device)
+                label = label.to(device)
                 prediction = model(img)
                 _, index = torch.max(prediction, dim=1)
                 all_predictions.extend(index.tolist())
@@ -75,4 +83,5 @@ def train():
 
 
 if __name__ == '__main__':
+    print(device)
     train()
